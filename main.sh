@@ -85,7 +85,9 @@ function SBAR_CHECK() {
             for XSS_PAYLOAD in "${XSS_PAYLOADS[@]}"; do
                 # Replace the value of the search parameter with each XSS payload
                 modified_url=$(echo $search_url | sed "s#$key=[^&]*#$key=$XSS_PAYLOAD#")
+                echo -e "--------------------------------------------------"
                 echo -e "[${BLUE}*${RESET}] Testing URL with XSS payload..."
+                echo -e "--------------------------------------------------"
 
                 # Send the request with the XSS payload
                 response=$(curl -sL "$modified_url")
@@ -99,7 +101,9 @@ function SBAR_CHECK() {
 
                 # Add space before displaying other inputs
                 echo -e "\n" # Adds a blank line for spacing
+                echo -e "-----------------------------------------------------------------------------"
                 echo -e "[${BLUE}*${RESET}] Displaying all other <input> tags (excluding search-related ones):"
+                echo -e "-----------------------------------------------------------------------------"
 
                 # Show all <input> tags (excluding search-related ones)
                 all_inputs=$(curl -sL "$target" | grep -oP '<input[^>]+>')
@@ -114,12 +118,28 @@ function SBAR_CHECK() {
     done
 }
 
+# Function to check for a comments section
+function CHECK_COMMENTS() {
+    # Get the HTML content and search for elements that indicate a comment section
+    comment_section=$(curl -sL "$target" | grep -i -oP '<(textarea|input)[^>]*(class|name|id)?=["'"'"'][^"'"'"'>]*(comment|feedback|reply|message|review)[^"'"'"'>]*')
+
+
+    # Check if any comment-related section is found
+    if [[ -n "$comment_section" ]]; then
+        echo -e "[${GREEN}+${RESET}] Comment section detected!"
+        echo -e "[${GREEN}+${RESET}] HTML snippet containing comment-related elements:\n\n${GREEN}$comment_section${RESET}\n"
+    else
+        echo -e "[${RED}-${RESET}] No comment section detected."
+    fi
+}
+
 # main function
 main() {
     clear
     BANNER
     CHECK_CONFIGS
     SBAR_CHECK
+    CHECK_COMMENTS
 }
 
 # call the main function
