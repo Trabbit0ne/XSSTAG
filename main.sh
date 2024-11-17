@@ -28,19 +28,20 @@ UNDERLINE='\e[4m'
 
 # Functions
 
-# Check if the target URL is provided
-
+# Banner function to display information about the target
 function BANNER() {
-echo "      _,  , __,  __, _______,    ,___ "
-echo "     ( |,' (    (   (  /  / |   /   / "
-echo "       +    '.   '.   /  /--|  /  __  "
-echo "    _,'|__(___)(___)_/ _/   |_(___/   "
-echo "                         By Trabbit   "
-echo "-------------------------------------------------------------------"
-echo "  Target: $target"
-echo "-------------------------------------------------------------------"
+    echo "      _,  , __,  __, _______,    ,___ "
+    echo "     ( |,' (    (   (  /  / |   /   / "
+    echo "       +    '.   '.   /  /--|  /  __  "
+    echo "    _,'|__(___)(___)_/ _/   |_(___/   "
+    echo "                         By Trabbit   "
+    echo "-------------------------------------------------------------------"
+    echo "  Target: $target"
+    echo "-------------------------------------------------------------------"
+    echo
 }
 
+# Check if the target URL is provided
 function CHECK_CONFIGS() {
     if [[ -z "$target" ]]; then
         echo -e "${RED}Please provide a target!${RESET}"
@@ -57,9 +58,8 @@ function SBAR_CHECK() {
         echo -e "[${RED}-${RESET}] No search bar detected."
     else
         echo -e "[${GREEN}+${RESET}] Search bar detected!"
-        echo -e "[${GREEN}+${RESET}] HTML snippet containing 'search':\n\n ${GREEN}$search_bar${RESET}\n"
+        echo -e "[${GREEN}+${RESET}] HTML snippet containing 'search':\n\n${GREEN}$search_bar${RESET}\n"
     fi
-
 
     # Prompt the user to provide the full URL
     read -p "Please provide the full URL (e.g., https://example.com/search?s=test): " search_url
@@ -85,29 +85,33 @@ function SBAR_CHECK() {
             for XSS_PAYLOAD in "${XSS_PAYLOADS[@]}"; do
                 # Replace the value of the search parameter with each XSS payload
                 modified_url=$(echo $search_url | sed "s#$key=[^&]*#$key=$XSS_PAYLOAD#")
-                echo -e "[${BLUE}*${RESET}] Testing URL with XSS payload: $modified_url"
+                echo -e "[${BLUE}*${RESET}] Testing URL with XSS payload..."
 
                 # Send the request with the XSS payload
                 response=$(curl -sL "$modified_url")
 
                 # Check if the XSS payload appears as text (indicating reflection)
                 if echo "$response" | grep -q "$XSS_PAYLOAD"; then
-                    echo -e "[${GREEN}+${RESET}] The XSS payload was reflected as text on the page."
                     echo -e "[${GREEN}+${RESET}] Vulnerability found with payload: $XSS_PAYLOAD"
-                    return
+                else
+                    echo -e "[${RED}-${RESET}] No XSS vulnerabilities detected with any payload."
                 fi
 
-                # Check if the XSS payload was executed (indicating a potential XSS vulnerability)
-                if echo "$response" | grep -q "$XSS_PAYLOAD"; then
-                    echo -e "[${GREEN}+${RESET}] The XSS payload was executed on the page! Vulnerability found."
-                    return
-                fi
+                # Add space before displaying other inputs
+                echo -e "\n" # Adds a blank line for spacing
+                echo -e "[${BLUE}*${RESET}] Displaying all other <input> tags (excluding search-related ones):"
+
+                # Show all <input> tags (excluding search-related ones)
+                all_inputs=$(curl -sL "$target" | grep -oP '<input[^>]+>')
+
+                # Exclude inputs already found in the search_bar variable
+                echo "$all_inputs" | grep -vF "$search_bar"
+
+                # Exit the function after displaying inputs
+                return
             done
         fi
     done
-
-    # If no vulnerabilities were found, notify the user
-    echo -e "[${RED}-${RESET}] No XSS vulnerabilities detected with any payload."
 }
 
 # main function
