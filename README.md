@@ -16,8 +16,8 @@ Curl –sSL https://raw.githubusercontent.com/Trabbit0ne/XSSTAG/refs/heads/main/
 
 Then 
 
-``
+```
 
 xsstag 
 
-``
+```
