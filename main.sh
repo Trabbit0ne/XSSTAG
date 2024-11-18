@@ -5,11 +5,12 @@ clear
 
 # Variables
 target=$1
+response_code=$(curl -s -o /dev/null -w "%{http_code}" "$target")
 
 # Define color codes
 RED='\e[0;31m'
 GREEN='\e[0;32m'
-YELLOW='\e[1;33m'
+YELLOW='\e[33m'
 BLUE='\e[0;34m'
 MAGENTA='\e[0;35m'
 CYAN='\e[0;36m'
@@ -37,6 +38,7 @@ function BANNER() {
     echo "                         By Trabbit   "
     echo "-------------------------------------------------------------------"
     echo "  Target: $target"
+    echo "  Response Code: $response_code"
     echo "-------------------------------------------------------------------"
     echo
 }
@@ -82,12 +84,15 @@ function SBAR_CHECK() {
 
         # If the key is one of the common search-related parameters, replace its value with the XSS payload
         if [[ "$key" == "s" || "$key" == "q" || "$key" == "search" || "$key" == "query" || "$key" == "keyword" ]]; then
+            # Display the testing message once
+            echo -e "--------------------------------------------------"
+            echo -e "[${BLUE}*${RESET}] Testing URL with XSS payloads..."
+            echo -e "--------------------------------------------------"
+
+            # Iterate through each payload and test
             for XSS_PAYLOAD in "${XSS_PAYLOADS[@]}"; do
                 # Replace the value of the search parameter with each XSS payload
                 modified_url=$(echo $search_url | sed "s#$key=[^&]*#$key=$XSS_PAYLOAD#")
-                echo -e "--------------------------------------------------"
-                echo -e "[${BLUE}*${RESET}] Testing URL with XSS payload..."
-                echo -e "--------------------------------------------------"
 
                 # Send the request with the XSS payload
                 response=$(curl -sL "$modified_url")
@@ -95,25 +100,13 @@ function SBAR_CHECK() {
                 # Check if the XSS payload appears as text (indicating reflection)
                 if echo "$response" | grep -q "$XSS_PAYLOAD"; then
                     echo -e "[${GREEN}+${RESET}] Vulnerability found with payload: $XSS_PAYLOAD"
-                else
-                    echo -e "[${RED}-${RESET}] No XSS vulnerabilities detected with any payload."
                 fi
-
-                # Add space before displaying other inputs
-                echo -e "\n" # Adds a blank line for spacing
-                echo -e "-----------------------------------------------------------------------------"
-                echo -e "[${BLUE}*${RESET}] Displaying all other <input> tags (excluding search-related ones):"
-                echo -e "-----------------------------------------------------------------------------"
-
-                # Show all <input> tags (excluding search-related ones)
-                all_inputs=$(curl -sL "$target" | grep -oP '<input[^>]+>')
-
-                # Exclude inputs already found in the search_bar variable
-                echo "$all_inputs" | grep -vF "$search_bar"
-
-                # Exit the function after displaying inputs
-                return
             done
+            echo -e "[ ${YELLOW}done${RESET} ]"
+
+            # Add space before displaying other inputs
+            echo "" # Adds a blank line for spacing
+            echo -e "-----------------------------------------------------------------------------"
         fi
     done
 }
@@ -122,7 +115,6 @@ function SBAR_CHECK() {
 function CHECK_COMMENTS() {
     # Get the HTML content and search for elements that indicate a comment section
     comment_section=$(curl -sL "$target" | grep -i -oP '<(textarea|input)[^>]*(class|name|id)?=["'"'"'][^"'"'"'>]*(comment|feedback|reply|message|review)[^"'"'"'>]*')
-
 
     # Check if any comment-related section is found
     if [[ -n "$comment_section" ]]; then
