@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/128f3f50-e8d0-4dfd-a32d-49b10f17a11a" style="width: 45%;">
+<img src="https://github.com/user-attachments/assets/128f3f50-e8d0-4dfd-a32d-49b10f17a11a" style="width: 45%; display: block; margin: 0 auto;">
 
 [![YouTube Channel](https://img.shields.io/badge/YouTube-Channel-red)](https://www.youtube.com/@TrabbitOne)
 
