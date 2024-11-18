@@ -8,9 +8,9 @@ target=$1
 response_code=$(curl -s -o /dev/null -w "%{http_code}" "$target")
 
 # Define color codes
-RED='\e[0;31m'
+RED='\e[31m'
 GREEN='\e[0;32m'
-YELLOW='\e[33m'
+YELLOW='\e[1;33m'
 BLUE='\e[0;34m'
 MAGENTA='\e[0;35m'
 CYAN='\e[0;36m'
@@ -27,15 +27,12 @@ RESET='\e[0m'
 BOLD='\e[1m'
 UNDERLINE='\e[4m'
 
-# Functions
-
 # Banner function to display information about the target
 function BANNER() {
-    echo "      _,  , __,  __, _______,    ,___ "
-    echo "     ( |,' (    (   (  /  / |   /   / "
-    echo "       +    '.   '.   /  /--|  /  __  "
-    echo "    _,'|__(___)(___)_/ _/   |_(___/   "
-    echo "                         By Trabbit   "
+    echo -e "${RED} ═╗ ╦╔═╗╔═╗╔╦╗╔═╗╔═╗  "
+    echo -e " ╔╩╦╝╚═╗╚═╗ ║ ╠═╣║ ╦  "
+    echo -e " ╩ ╚═╚═╝╚═╝ ╩ ╩ ╩╚═╝ ${RESET}"
+    echo -e "      By Trabbit      "
     echo "-------------------------------------------------------------------"
     echo "  Target: $target"
     echo "  Response Code: $response_code"
@@ -65,64 +62,70 @@ function SBAR_CHECK() {
 
     # Prompt the user to provide the full URL
     read -p "Please provide the full URL (e.g., https://example.com/search?s=test): " search_url
+    echo -e "-----------------------------------------------------------------------------"
 
     # Define a list of multiple XSS payloads
-    XSS_PAYLOADS=(
-        "<h1>xss</h1>"
-        "<script>alert('XSS')</script>"
-        "<img src='x' onerror='alert(1)'>"
-        "<a href='javascript:alert(1)'>click me</a>"
-    )
+    XSS_PAYLOADS=( "<h1>XSS</h1>"
+                    "<p>XSS</p>"
+                    "<script>alert('XSS')</script>"
+                    "<script>alert(document.cookie)</script>"
+                    "<body onload='alert('XSS')'></body>"
+                    "<img src='x' onerror='alert(1)'>"
+                    "<a href='javascript:alert(1)'>click me</a>"
+                    "<svg onload='alert('XSS')'></svg>" )
 
     # Extract all parameters from the URL
     params=$(echo $search_url | sed -E 's/^[^?]+\?//')
 
     # Loop through all parameters and inject the XSS payloads into search-related ones
     for param in $(echo $params | tr '&' '\n'); do
-        # Extract parameter name and value
         key=$(echo $param | cut -d'=' -f1)
 
-        # If the key is one of the common search-related parameters, replace its value with the XSS payload
         if [[ "$key" == "s" || "$key" == "q" || "$key" == "search" || "$key" == "query" || "$key" == "keyword" ]]; then
-            # Display the testing message once
-            echo -e "--------------------------------------------------"
-            echo -e "[${BLUE}*${RESET}] Testing URL with XSS payloads..."
-            echo -e "--------------------------------------------------"
-
             # Iterate through each payload and test
             for XSS_PAYLOAD in "${XSS_PAYLOADS[@]}"; do
-                # Replace the value of the search parameter with each XSS payload
                 modified_url=$(echo $search_url | sed "s#$key=[^&]*#$key=$XSS_PAYLOAD#")
-
-                # Send the request with the XSS payload
                 response=$(curl -sL "$modified_url")
 
                 # Check if the XSS payload appears as text (indicating reflection)
                 if echo "$response" | grep -q "$XSS_PAYLOAD"; then
                     echo -e "[${GREEN}+${RESET}] Vulnerability found with payload: $XSS_PAYLOAD"
+#                else
+#                    echo -e "[${RED}-${RESET}] No XSS vulnerabilities detected with payload: $XSS_PAYLOAD"
                 fi
             done
-            echo -e "[ ${YELLOW}done${RESET} ]"
-
-            # Add space before displaying other inputs
-            echo "" # Adds a blank line for spacing
-            echo -e "-----------------------------------------------------------------------------"
         fi
     done
+    echo -e "[ ${YELLOW}done${RESET} ]"
 }
 
 # Function to check for a comments section
 function CHECK_COMMENTS() {
-    # Get the HTML content and search for elements that indicate a comment section
     comment_section=$(curl -sL "$target" | grep -i -oP '<(textarea|input)[^>]*(class|name|id)?=["'"'"'][^"'"'"'>]*(comment|feedback|reply|message|review)[^"'"'"'>]*')
+    echo -e "-----------------------------------------------------------------------------"
 
-    # Check if any comment-related section is found
     if [[ -n "$comment_section" ]]; then
         echo -e "[${GREEN}+${RESET}] Comment section detected!"
         echo -e "[${GREEN}+${RESET}] HTML snippet containing comment-related elements:\n\n${GREEN}$comment_section${RESET}\n"
     else
         echo -e "[${RED}-${RESET}] No comment section detected."
     fi
+    echo -e "-----------------------------------------------------------------------------"
+}
+
+# Function to show all <input> tags excluding the ones related to search
+function CHECK_INPUTS() {
+    all_inputs=$(curl -sL "$target" | grep -oP '<input[^>]+>')
+
+    if [[ -z "$all_inputs" ]]; then
+        echo -e "[${RED}-${RESET}] No input tags found."
+    else
+        echo -e "[${BLUE}*${RESET}] Displaying all <input> tags (excluding search-related ones):"
+        echo -e "-----------------------------------------------------------------------------"
+        # Exclude inputs already found in the search_bar variable
+        echo "$all_inputs" | grep -vF "$search_bar" || echo -e "[${RED}-${RESET}] No other <input> tags found."
+    fi
+    echo -e "-----------------------------------------------------------------------------"
 }
 
 # main function
@@ -132,6 +135,7 @@ main() {
     CHECK_CONFIGS
     SBAR_CHECK
     CHECK_COMMENTS
+    CHECK_INPUTS
 }
 
 # call the main function
