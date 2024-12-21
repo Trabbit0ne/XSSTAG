@@ -17,7 +17,5 @@ curl -sSL https://raw.githubusercontent.com/Trabbit0ne/XSSTAG/main/main.sh -o $(
 Then 
 
 ```
-
 xsstag 
-
 ```
