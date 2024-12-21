@@ -11,7 +11,6 @@ Tool for finding search bars and comments section while testing for XSS vulnerab
 # Installation 
 
 ``` 
-
 curl -sSL https://raw.githubusercontent.com/Trabbit0ne/XSSTAG/main/main.sh -o $(dirname $(command -v bash))/xsstag && chmod +x $(dirname $(command -v bash))/xsstag
 ```
 
